@@ -25,27 +25,39 @@ run =
 runCompiler = \file ->
     fileStr <- file |> Path.fromStr |> File.readUtf8 |> await
     chars = Str.graphemes fileStr
-    tokens = scan chars
+    { tokens } = scan chars
     token <- traverseForEffect tokens
     token |> tokenToStr |> Stdout.line
 
 scan = \chars ->
-    tokens, char <- List.walk chars []
-    token =
-        when char is
-            "("  -> LeftParen
-            ")"  -> RightParen
-            "{"  -> LeftBrace
-            "}"  -> RightBrace
-            ","  -> Comma
-            "."  -> Dot
-            "-"  -> Minus
-            "+"  -> Plus
-            ";"  -> SemiColon
-            "*"  -> Mult
-            "\n" -> Newline
-            c    -> Unknown c
-    List.append tokens token
+    initialState = { tokens: [], mode: Start }
+    state, char <- List.walk chars initialState
+    next = scanNext char state.mode
+    when next.token is
+        Token token ->
+            tokens = List.append state.tokens token
+            { tokens, mode: next.mode }
+        NoToken ->
+            { tokens: state.tokens, mode: next.mode }
+
+scanNext = \char, mode ->
+    when T char mode is
+        T "(" _ -> LeftParen  |> advance
+        T ")" _ -> RightParen |> advance
+        T "{" _ -> LeftBrace  |> advance
+        T "}" _ -> RightBrace |> advance
+        T "," _ -> Comma      |> advance
+        T "." _ -> Dot        |> advance
+        T "-" _ -> Minus      |> advance
+        T "+" _ -> Plus       |> advance
+        T ";" _ -> SemiColon  |> advance
+        T "*" _ -> Mult       |> advance
+        T "\n"_ -> Newline    |> advance
+        T c   _ -> Unknown c  |> advance
+
+advance = \token -> { token: Token token, mode: Start }
+
+# foo = \mode -> { NoToken, mode }
 
 tokenToStr = \token ->
     when token is
