@@ -59,7 +59,10 @@ scanNext = \char, state ->
         # Numbers
         T d Start if List.contains digits d -> State (N d)
         T d (N n) if List.contains digits d -> State (N (Str.concat n d))
+        T "." (N n) -> State (N2 (Str.concat n char))
+        T d (N2 n) if List.contains digits d -> State (N2 (Str.concat n d))
         T _ (N n) -> Tokens (Number (toNumber n)) (tokenForChar char)
+        T _ (N2 n) -> Tokens (Number (toNumber n)) (tokenForChar char)
 
         # Potentially 2 character tokens
         T "!"  Start -> State Not
@@ -134,7 +137,7 @@ tokenToStr = \token ->
 digits = { start: At 0, end: At 9 } |> List.range |> List.map Num.toStr
 
 toNumber = \str ->
-    when Str.toU64 str is
+    when Str.toF64 str is
         Ok n  -> n
         Err _ -> crash "Not a number"
 

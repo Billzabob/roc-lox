@@ -1,4 +1,4 @@
 // This is a comment
-12345
+12345.123
 +!=+!+"howdy"++
 // This is a comment
