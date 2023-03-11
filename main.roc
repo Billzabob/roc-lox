@@ -30,34 +30,41 @@ runCompiler = \file ->
     token |> tokenToStr |> Stdout.line
 
 scan = \chars ->
-    initialState = { tokens: [], mode: Start }
-    state, char <- List.walk chars initialState
-    next = scanNext char state.mode
-    when next.token is
+    initialState = { tokens: [], state: Start }
+    { tokens, state }, char <- List.walk chars initialState
+    when scanNext char state is
         Token token ->
-            tokens = List.append state.tokens token
-            { tokens, mode: next.mode }
-        NoToken ->
-            { tokens: state.tokens, mode: next.mode }
+            newTokens = tokens |> List.append token
+            { tokens: newTokens, state: Start }
+        State newState ->
+            { tokens, state: newState }
 
-scanNext = \char, mode ->
-    when T char mode is
-        T "(" _ -> LeftParen  |> advance
-        T ")" _ -> RightParen |> advance
-        T "{" _ -> LeftBrace  |> advance
-        T "}" _ -> RightBrace |> advance
-        T "," _ -> Comma      |> advance
-        T "." _ -> Dot        |> advance
-        T "-" _ -> Minus      |> advance
-        T "+" _ -> Plus       |> advance
-        T ";" _ -> SemiColon  |> advance
-        T "*" _ -> Mult       |> advance
-        T "\n"_ -> Newline    |> advance
-        T c   _ -> Unknown c  |> advance
-
-advance = \token -> { token: Token token, mode: Start }
-
-# foo = \mode -> { NoToken, mode }
+scanNext = \char, state ->
+    when T char state is
+        T "("  Start   -> Token LeftParen
+        T ")"  Start   -> Token RightParen
+        T "{"  Start   -> Token LeftBrace
+        T "}"  Start   -> Token RightBrace
+        T ","  Start   -> Token Comma
+        T "."  Start   -> Token Dot
+        T "-"  Start   -> Token Minus
+        T "+"  Start   -> Token Plus
+        T ";"  Start   -> Token SemiColon
+        T "*"  Start   -> Token Mult
+        T "!"  Start   -> State Exc
+        T "="  Start   -> State Eq
+        T "<"  Start   -> State Lt
+        T ">"  Start   -> State Gt
+        T "\n" Start   -> Token Newline
+        T "="  Exc     -> Token NotEq
+        T  _   Exc     -> Token Not
+        T "="  Eq      -> Token EqEq
+        T  _   Eq      -> Token Eq
+        T "="  Lt      -> Token LtEq
+        T  _   Lt      -> Token Lt
+        T "="  Gt      -> Token GtEq
+        T  _   Gt      -> Token Gt
+        T  c   Start   -> Token (Unknown c)
 
 tokenToStr = \token ->
     when token is
@@ -72,6 +79,14 @@ tokenToStr = \token ->
         SemiColon -> "SemiColon"
         Mult -> "Mult"
         Newline -> "Newline"
+        NotEq -> "NotEq"
+        Not -> "Not"
+        EqEq -> "EqEq"
+        Eq -> "Eq"
+        LtEq -> "LtEq"
+        Lt -> "Lt"
+        GtEq -> "GtEq"
+        Gt -> "Gt"
         Unknown c -> "Unknown: \(c)"
 
 runRepl = Stdout.line "Running REPL"
