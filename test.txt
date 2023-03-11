@@ -1,1 +1,4 @@
-*+-**(){}!=+++!+<+<=+>+>=+=+==+
+// This is a comment
+12345
++!=+!+"howdy"++
+// This is a comment

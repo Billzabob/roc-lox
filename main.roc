@@ -22,6 +22,8 @@ run =
         [_lox, file] -> runCompiler file
         _            -> Stdout.line "Usage: lox [file]"
 
+runRepl = Stdout.line "Running REPL"
+
 runCompiler = \file ->
     fileStr <- file |> Path.fromStr |> File.readUtf8 |> await
     chars = Str.graphemes fileStr
@@ -36,35 +38,69 @@ scan = \chars ->
         Token token ->
             newTokens = tokens |> List.append token
             { tokens: newTokens, state: Start }
+        Tokens token1 token2 ->
+            newTokens = tokens |> List.concat [token1, token2]
+            { tokens: newTokens, state: Start }
         State newState ->
             { tokens, state: newState }
 
 scanNext = \char, state ->
     when T char state is
-        T "("  Start   -> Token LeftParen
-        T ")"  Start   -> Token RightParen
-        T "{"  Start   -> Token LeftBrace
-        T "}"  Start   -> Token RightBrace
-        T ","  Start   -> Token Comma
-        T "."  Start   -> Token Dot
-        T "-"  Start   -> Token Minus
-        T "+"  Start   -> Token Plus
-        T ";"  Start   -> Token SemiColon
-        T "*"  Start   -> Token Mult
-        T "!"  Start   -> State Exc
-        T "="  Start   -> State Eq
-        T "<"  Start   -> State Lt
-        T ">"  Start   -> State Gt
-        T "\n" Start   -> Token Newline
-        T "="  Exc     -> Token NotEq
-        T  _   Exc     -> Token Not
-        T "="  Eq      -> Token EqEq
-        T  _   Eq      -> Token Eq
-        T "="  Lt      -> Token LtEq
-        T  _   Lt      -> Token Lt
-        T "="  Gt      -> Token GtEq
-        T  _   Gt      -> Token Gt
-        T  c   Start   -> Token (Unknown c)
+        # Comments
+        T "/"  Slash -> State Comm
+        T "\n" Comm  -> Token Newline
+        T  _   Comm  -> State Comm
+
+        # Strings
+        T "\"" Start -> State (S "")
+        T "\"" (S s) -> Token (String s)
+        T  _   (S s) -> State (S (Str.concat s char))
+
+        # Numbers
+        T d Start if List.contains digits d -> State (N d)
+        T d (N n) if List.contains digits d -> State (N (Str.concat n d))
+        T _ (N n) -> Tokens (Number (toNumber n)) (tokenForChar char)
+
+        # Potentially 2 character tokens
+        T "!"  Start -> State Not
+        T "="  Start -> State Eq
+        T "<"  Start -> State Lt
+        T ">"  Start -> State Gt
+        T "/"  Start -> State Slash
+        T "="  Not   -> Token NotEq
+        T "="  Eq    -> Token EqEq
+        T "="  Lt    -> Token LtEq
+        T "="  Gt    -> Token GtEq
+        T  _   Not   -> Tokens Not (tokenForChar char)
+        T  _   Eq    -> Tokens Eq (tokenForChar char)
+        T  _   Lt    -> Tokens Lt (tokenForChar char)
+        T  _   Gt    -> Tokens Gt (tokenForChar char)
+        T  _   Slash -> Tokens Slash (tokenForChar char)
+
+        # Single character tokens
+        T  _   Start -> Token (tokenForChar char)
+
+tokenForChar = \char ->
+    when char is
+        "!"  -> Not
+        "="  -> Eq
+        "<"  -> Lt
+        ">"  -> Gt
+        "("  -> LeftParen
+        ")"  -> RightParen
+        "{"  -> LeftBrace
+        "}"  -> RightBrace
+        ","  -> Comma
+        "."  -> Dot
+        "-"  -> Minus
+        "+"  -> Plus
+        ";"  -> SemiColon
+        "*"  -> Mult
+        " "  -> Whitespace
+        "\r" -> Whitespace
+        "\t" -> Whitespace
+        "\n" -> Newline
+        c    -> Unknown c
 
 tokenToStr = \token ->
     when token is
@@ -79,6 +115,7 @@ tokenToStr = \token ->
         SemiColon -> "SemiColon"
         Mult -> "Mult"
         Newline -> "Newline"
+        Whitespace -> "Whitespace"
         NotEq -> "NotEq"
         Not -> "Not"
         EqEq -> "EqEq"
@@ -87,9 +124,19 @@ tokenToStr = \token ->
         Lt -> "Lt"
         GtEq -> "GtEq"
         Gt -> "Gt"
+        Slash -> "Slash"
+        String s -> "String(\(s))"
+        Number n ->
+            nStr = Num.toStr n
+            "Number(\(nStr))"
         Unknown c -> "Unknown: \(c)"
 
-runRepl = Stdout.line "Running REPL"
+digits = { start: At 0, end: At 9 } |> List.range |> List.map Num.toStr
+
+toNumber = \str ->
+    when Str.toU64 str is
+        Ok n  -> n
+        Err _ -> crash "Not a number"
 
 ###############
 ### HELPERS ###
