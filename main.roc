@@ -9,7 +9,7 @@ app "lox"
     ]
     provides [main] to cli
 
-expect compile "var = 1 + 2" == [Ident "var", Eq, Number "1", Plus, Number "2", Newline]
+expect compile "foo = 1 + 2" == [Ident "foo", Eq, Number "1", Plus, Number "2", Newline]
 
 main =
     failure <- Task.onFail run
