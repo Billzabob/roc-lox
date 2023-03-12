@@ -124,6 +124,7 @@ tokenForChar = \char ->
         "\n" -> Newline
         c    -> Unknown c
 
+# I can't get dbg working or this probably wouldn't be necessary
 tokenToStr = \token ->
     when token is
         LeftParen -> "LeftParen"
