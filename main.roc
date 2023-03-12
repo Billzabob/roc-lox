@@ -120,8 +120,23 @@ scanNext = \char, state ->
 
 checkKeywords = \name ->
     when name is
-        "if"  -> Keyword If
-        ident -> Ident ident
+        "and"    -> Keyword And
+        "class"  -> Keyword Class
+        "else"   -> Keyword Else
+        "false"  -> Keyword False
+        "for"    -> Keyword For
+        "fun"    -> Keyword Fun
+        "if"     -> Keyword If
+        "nil"    -> Keyword Nil
+        "or"     -> Keyword Or
+        "print"  -> Keyword Print
+        "return" -> Keyword Return
+        "super"  -> Keyword Super
+        "this"   -> Keyword This
+        "true"   -> Keyword True
+        "var"    -> Keyword Var
+        "while"  -> Keyword While
+        ident    -> Ident ident
 
 tokenForChar = \char ->
     when char is
