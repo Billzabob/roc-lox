@@ -54,7 +54,7 @@ scanNext = \char, state ->
                 ">"            -> Gt                   |> State
                 "/"            -> Slash                |> State
                 "\""           -> ""   |> String       |> State
-                d if isDigit d -> d    |> Number       |> State
+                d if isDigit d -> d    |> Integer      |> State
                 _              -> char |> tokenForChar |> Token
 
         Slash ->
@@ -72,16 +72,16 @@ scanNext = \char, state ->
                 "\"" -> s |> String                    |> Token
                 _    -> s |> Str.concat char |> String |> State
 
-        Number n ->
+        Integer n ->
             when char is
-                d if isDigit d -> n |> Str.concat d    |> Number   |> State
-                "."            -> n |> Str.concat char |> Fraction |> State
-                _              -> n |> toNumber        |> Number   |> withPrevious char
+                d if isDigit d -> n |> Str.concat d    |> Integer |> State
+                "."            -> n |> Str.concat char |> Float   |> State
+                _              -> n |> toNumber        |> Number  |> withPrevious char
 
-        Fraction n ->
+        Float n ->
             when char is
-                d if isDigit d -> n |> Str.concat d |> Fraction |> State
-                _              -> n |> toNumber     |> Number   |> withPrevious char
+                d if isDigit d -> n |> Str.concat d |> Float  |> State
+                _              -> n |> toNumber     |> Number |> withPrevious char
 
         Not ->
             when char is
