@@ -45,43 +45,62 @@ scan = \chars ->
             { tokens, state: newState }
 
 scanNext = \char, state ->
-    when T char state is
-        # Comments
-        T "/"  Slash -> State Comm
-        T "\n" Comm  -> Token Newline
-        T  _   Comm  -> State Comm
+    when state is
+        Start ->
+            when char is
+                "\"" -> "" |> String |> State
+                "!"  -> Not |> State
+                "="  -> Eq |> State
+                "<"  -> Lt |> State
+                ">"  -> Gt |> State
+                "/"  -> Slash |> State
+                d if isDigit d -> d |> Number |> State
+                _    -> char |> tokenForChar |> Token
 
-        # Strings
-        T "\"" Start -> State (S "")
-        T "\"" (S s) -> Token (String s)
-        T  _   (S s) -> State (S (Str.concat s char))
+        Slash ->
+            when char is
+                "/" -> Comment |> State
+                _   -> Slash |> withPrevious char
 
-        # Numbers
-        T d Start if List.contains digits d -> State (N d)
-        T d (N n) if List.contains digits d -> State (N (Str.concat n d))
-        T "." (N n) -> State (N2 (Str.concat n char))
-        T d (N2 n) if List.contains digits d -> State (N2 (Str.concat n d))
-        T _ (N n) -> Tokens (Number (toNumber n)) (tokenForChar char)
-        T _ (N2 n) -> Tokens (Number (toNumber n)) (tokenForChar char)
+        Comment ->
+            when char is
+                "\n" -> Newline |> Token
+                _    -> Comment |> State
 
-        # Potentially 2 character tokens
-        T "!"  Start -> State Not
-        T "="  Start -> State Eq
-        T "<"  Start -> State Lt
-        T ">"  Start -> State Gt
-        T "/"  Start -> State Slash
-        T "="  Not   -> Token NotEq
-        T "="  Eq    -> Token EqEq
-        T "="  Lt    -> Token LtEq
-        T "="  Gt    -> Token GtEq
-        T  _   Not   -> Tokens Not (tokenForChar char)
-        T  _   Eq    -> Tokens Eq (tokenForChar char)
-        T  _   Lt    -> Tokens Lt (tokenForChar char)
-        T  _   Gt    -> Tokens Gt (tokenForChar char)
-        T  _   Slash -> Tokens Slash (tokenForChar char)
+        String s ->
+            when char is
+                "\"" -> s |> String |> Token
+                _    -> s |> Str.concat char |> String |> State
 
-        # Single character tokens
-        T  _   Start -> Token (tokenForChar char)
+        Number n ->
+            when char is
+                d if isDigit d -> n |> Str.concat d |> Number |> State
+                "." -> n |> Str.concat char |> Fraction |> State
+                _   -> n |> toNumber |> Number |> withPrevious char
+
+        Fraction n ->
+            when char is
+                d if isDigit d -> n |> Str.concat d |> Fraction |> State
+                _ -> n |> toNumber |> Number |> withPrevious char
+
+        Not ->
+            when char is
+                "=" -> NotEq |> Token
+                _   -> Not |> withPrevious char
+        Eq ->
+            when char is
+                "=" -> EqEq |> Token
+                _   -> Eq |> withPrevious char
+        Lt ->
+            when char is
+                "=" -> LtEq |> Token
+                _   -> Lt |> withPrevious char
+        Gt ->
+            when char is
+                "=" -> GtEq |> Token
+                _   -> Gt |> withPrevious char
+
+withPrevious = \t, c -> Tokens t (tokenForChar c)
 
 tokenForChar = \char ->
     when char is
@@ -135,6 +154,8 @@ tokenToStr = \token ->
         Unknown c -> "Unknown: \(c)"
 
 digits = { start: At 0, end: At 9 } |> List.range |> List.map Num.toStr
+
+isDigit = \d -> digits |> List.contains d
 
 toNumber = \str ->
     when Str.toF64 str is
