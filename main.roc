@@ -3,13 +3,14 @@ app "lox"
     imports [
         cli.Arg,
         cli.File,
-        cli.Path.{ Path, ReadErr },
+        cli.Path,
         cli.Stdout,
         cli.Task.{ Task, await }
     ]
     provides [main] to cli
 
-main : Task {} []
+expect compile "var = 1 + 2" == [Ident "var", Eq, Number "1", Plus, Number "2", Newline]
+
 main =
     failure <- Task.onFail run
     when failure is
@@ -25,24 +26,32 @@ run =
 runRepl = Stdout.line "Running REPL"
 
 runCompiler = \file ->
-    fileStr <- file |> Path.fromStr |> File.readUtf8 |> await
-    chars = Str.graphemes fileStr
-    { tokens } = scan chars
-    token <- traverseForEffect tokens
-    token |> tokenToStr |> Stdout.line
+    _ <- file |> Path.fromStr |> File.readUtf8 |> Task.map compile |> await
+    Stdout.line "Done compiling"
+
+compile = \src ->
+    src |> Str.graphemes |> List.append "\n" |> scan
 
 scan = \chars ->
-    initialState = { tokens: [], state: Start }
-    { tokens, state }, char <- List.walk chars initialState
-    when scanNext char state is
-        Token token ->
-            newTokens = tokens |> List.append token
-            { tokens: newTokens, state: Start }
-        Tokens token1 token2 ->
-            newTokens = tokens |> List.concat [token1, token2]
-            { tokens: newTokens, state: Start }
-        State newState ->
-            { tokens, state: newState }
+    scanHelp [] Start chars (List.len chars) 0
+
+scanHelp = \tokens, state, list, length, index ->
+    if index < length then
+        char = list |> getAt index
+        when  scanNext char state is
+            # Steps: produce token, advance to next char, reset to Start state
+            Steps token ->
+                newTokens = tokens |> List.append token
+                scanHelp newTokens Start list length (index + 1)
+            # Emits: produce token, stay at current char, reset to Start state
+            Emits token ->
+                newTokens = tokens |> List.append token
+                scanHelp newTokens Start list length index
+            # State: do not produce token, advance to next char, set new state
+            State newState ->
+                scanHelp tokens newState list length (index + 1)
+    else
+        tokens
 
 scanNext = \char, state ->
     when state is
@@ -53,54 +62,66 @@ scanNext = \char, state ->
                 "<"            -> Lt                   |> State
                 ">"            -> Gt                   |> State
                 "/"            -> Slash                |> State
+                " "            -> Start                |> State
+                "\r"           -> Start                |> State
+                "\t"           -> Start                |> State
                 "\""           -> ""   |> String       |> State
                 d if isDigit d -> d    |> Integer      |> State
-                _              -> char |> tokenForChar |> Token
+                a if isAlpha a -> a    |> Ident        |> State
+                _              -> char |> tokenForChar |> Steps
+
+        Ident a ->
+            when char is
+                c if isAlphaNumeric c -> a |> Str.concat c |> Ident |> State
+                _                     -> a |> checkKeywords         |> Emits
 
         Slash ->
             when char is
                 "/" -> Comment |> State
-                _   -> Slash   |> withPrevious char
+                _   -> Slash   |> Emits
 
         Comment ->
             when char is
-                "\n" -> Newline |> Token
+                "\n" -> Newline |> Steps
                 _    -> Comment |> State
 
         String s ->
             when char is
-                "\"" -> s |> String                    |> Token
+                "\"" -> s |> String                    |> Steps
                 _    -> s |> Str.concat char |> String |> State
 
         Integer n ->
             when char is
                 d if isDigit d -> n |> Str.concat d    |> Integer |> State
                 "."            -> n |> Str.concat char |> Float   |> State
-                _              -> n |> toNumber        |> Number  |> withPrevious char
+                _              -> n                    |> Number  |> Emits
 
         Float n ->
             when char is
                 d if isDigit d -> n |> Str.concat d |> Float  |> State
-                _              -> n |> toNumber     |> Number |> withPrevious char
+                _              -> n                 |> Number |> Emits
 
         Not ->
             when char is
-                "=" -> NotEq |> Token
-                _   -> Not   |> withPrevious char
+                "=" -> NotEq |> Steps
+                _   -> Not   |> Emits
         Eq ->
             when char is
-                "=" -> EqEq |> Token
-                _   -> Eq   |> withPrevious char
+                "=" -> EqEq |> Steps
+                _   -> Eq   |> Emits
         Lt ->
             when char is
-                "=" -> LtEq |> Token
-                _   -> Lt   |> withPrevious char
+                "=" -> LtEq |> Steps
+                _   -> Lt   |> Emits
         Gt ->
             when char is
-                "=" -> GtEq |> Token
-                _   -> Gt   |> withPrevious char
+                "=" -> GtEq |> Steps
+                _   -> Gt   |> Emits
 
-withPrevious = \token, char -> Tokens token (tokenForChar char)
+checkKeywords = \name ->
+    when name is
+        "if"  -> Keyword If
+        ident -> Ident ident
 
 tokenForChar = \char ->
     when char is
@@ -119,62 +140,21 @@ tokenForChar = \char ->
         "!"  -> Not
         "+"  -> Plus
         ";"  -> SemiColon
-        " "  -> Whitespace
-        "\r" -> Whitespace
-        "\t" -> Whitespace
         u    -> Unknown u
 
-# I can't get dbg working or this probably wouldn't be necessary
-tokenToStr = \token ->
-    when token is
-        Comma      -> "Comma"
-        Dot        -> "Dot"
-        Eq         -> "Eq"
-        EqEq       -> "EqEq"
-        Gt         -> "Gt"
-        GtEq       -> "GtEq"
-        LeftBrace  -> "LeftBrace"
-        LeftParen  -> "LeftParen"
-        Lt         -> "Lt"
-        LtEq       -> "LtEq"
-        Minus      -> "Minus"
-        Mult       -> "Mult"
-        Newline    -> "Newline"
-        Not        -> "Not"
-        NotEq      -> "NotEq"
-        Plus       -> "Plus"
-        RightBrace -> "RightBrace"
-        RightParen -> "RightParen"
-        SemiColon  -> "SemiColon"
-        Slash      -> "Slash"
-        String s   -> "String(\(s))"
-        Unknown u  -> "Unknown(\(u))"
-        Whitespace -> "Whitespace"
-        Number n   ->
-            nStr = Num.toStr n
-            "Number(\(nStr))"
+letters   = List.concat uppercase lowercase
+uppercase = { start: At 65, end: At 90 }  |> List.range |> List.map toUtf
+lowercase = { start: At 97, end: At 122 } |> List.range |> List.map toUtf
+digits    = { start: At 0, end: At 9 }    |> List.range |> List.map Num.toStr
 
-digits = { start: At 0, end: At 9 } |> List.range |> List.map Num.toStr
+toUtf = \n -> n |> List.single |> Str.fromUtf8 |> Result.withDefault ""
 
-isDigit = \d -> digits |> List.contains d
+isAlpha = \a -> letters |> List.contains a
+isDigit = \d -> digits  |> List.contains d
+isAlphaNumeric = \c -> Bool.or (isAlpha c) (isDigit c)
 
-toNumber = \str ->
-    when Str.toF64 str is
-        Ok n  -> n
-        Err _ -> crash "Not a number"
+getAt = \list, index ->
+    when List.get list index is
+        Ok v  -> v
+        Err _ -> crash "getAt"
 
-###############
-### HELPERS ###
-###############
-
-traverseForEffect = \list, f -> (traverse list f) |> Task.map \_ -> {}
-
-traverse = \list, f ->
-    initialState = list |> List.len |> List.withCapacity |> Task.succeed
-    walker = \task, elem -> map2 task (f elem) List.append
-    List.walk list initialState walker
-
-map2 = \task1, task2, f ->
-    a <- await task1
-    b <- await task2
-    Task.succeed (f a b)
