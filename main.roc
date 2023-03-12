@@ -48,19 +48,19 @@ scanNext = \char, state ->
     when state is
         Start ->
             when char is
-                "\"" -> "" |> String |> State
-                "!"  -> Not |> State
-                "="  -> Eq |> State
-                "<"  -> Lt |> State
-                ">"  -> Gt |> State
-                "/"  -> Slash |> State
-                d if isDigit d -> d |> Number |> State
-                _    -> char |> tokenForChar |> Token
+                "!"            -> Not                  |> State
+                "="            -> Eq                   |> State
+                "<"            -> Lt                   |> State
+                ">"            -> Gt                   |> State
+                "/"            -> Slash                |> State
+                "\""           -> ""   |> String       |> State
+                d if isDigit d -> d    |> Number       |> State
+                _              -> char |> tokenForChar |> Token
 
         Slash ->
             when char is
                 "/" -> Comment |> State
-                _   -> Slash |> withPrevious char
+                _   -> Slash   |> withPrevious char
 
         Comment ->
             when char is
@@ -69,38 +69,38 @@ scanNext = \char, state ->
 
         String s ->
             when char is
-                "\"" -> s |> String |> Token
+                "\"" -> s |> String                    |> Token
                 _    -> s |> Str.concat char |> String |> State
 
         Number n ->
             when char is
-                d if isDigit d -> n |> Str.concat d |> Number |> State
-                "." -> n |> Str.concat char |> Fraction |> State
-                _   -> n |> toNumber |> Number |> withPrevious char
+                d if isDigit d -> n |> Str.concat d    |> Number   |> State
+                "."            -> n |> Str.concat char |> Fraction |> State
+                _              -> n |> toNumber        |> Number   |> withPrevious char
 
         Fraction n ->
             when char is
                 d if isDigit d -> n |> Str.concat d |> Fraction |> State
-                _ -> n |> toNumber |> Number |> withPrevious char
+                _              -> n |> toNumber     |> Number   |> withPrevious char
 
         Not ->
             when char is
                 "=" -> NotEq |> Token
-                _   -> Not |> withPrevious char
+                _   -> Not   |> withPrevious char
         Eq ->
             when char is
                 "=" -> EqEq |> Token
-                _   -> Eq |> withPrevious char
+                _   -> Eq   |> withPrevious char
         Lt ->
             when char is
                 "=" -> LtEq |> Token
-                _   -> Lt |> withPrevious char
+                _   -> Lt   |> withPrevious char
         Gt ->
             when char is
                 "=" -> GtEq |> Token
-                _   -> Gt |> withPrevious char
+                _   -> Gt   |> withPrevious char
 
-withPrevious = \t, c -> Tokens t (tokenForChar c)
+withPrevious = \token, char -> Tokens token (tokenForChar char)
 
 tokenForChar = \char ->
     when char is
