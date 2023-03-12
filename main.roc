@@ -104,55 +104,55 @@ withPrevious = \token, char -> Tokens token (tokenForChar char)
 
 tokenForChar = \char ->
     when char is
-        "!"  -> Not
-        "="  -> Eq
-        "<"  -> Lt
-        ">"  -> Gt
-        "("  -> LeftParen
-        ")"  -> RightParen
-        "{"  -> LeftBrace
-        "}"  -> RightBrace
         ","  -> Comma
         "."  -> Dot
+        "="  -> Eq
+        ">"  -> Gt
+        "{"  -> LeftBrace
+        "("  -> LeftParen
+        "<"  -> Lt
         "-"  -> Minus
+        "*"  -> Mult
+        "\n" -> Newline
+        "}"  -> RightBrace
+        ")"  -> RightParen
+        "!"  -> Not
         "+"  -> Plus
         ";"  -> SemiColon
-        "*"  -> Mult
         " "  -> Whitespace
         "\r" -> Whitespace
         "\t" -> Whitespace
-        "\n" -> Newline
-        c    -> Unknown c
+        u    -> Unknown u
 
 # I can't get dbg working or this probably wouldn't be necessary
 tokenToStr = \token ->
     when token is
-        LeftParen -> "LeftParen"
-        RightParen -> "RightParen"
-        LeftBrace -> "LeftBrace"
+        Comma      -> "Comma"
+        Dot        -> "Dot"
+        Eq         -> "Eq"
+        EqEq       -> "EqEq"
+        Gt         -> "Gt"
+        GtEq       -> "GtEq"
+        LeftBrace  -> "LeftBrace"
+        LeftParen  -> "LeftParen"
+        Lt         -> "Lt"
+        LtEq       -> "LtEq"
+        Minus      -> "Minus"
+        Mult       -> "Mult"
+        Newline    -> "Newline"
+        Not        -> "Not"
+        NotEq      -> "NotEq"
+        Plus       -> "Plus"
         RightBrace -> "RightBrace"
-        Comma -> "Comma"
-        Dot -> "Dot"
-        Minus -> "Minus"
-        Plus -> "Plus"
-        SemiColon -> "SemiColon"
-        Mult -> "Mult"
-        Newline -> "Newline"
+        RightParen -> "RightParen"
+        SemiColon  -> "SemiColon"
+        Slash      -> "Slash"
+        String s   -> "String(\(s))"
+        Unknown u  -> "Unknown(\(u))"
         Whitespace -> "Whitespace"
-        NotEq -> "NotEq"
-        Not -> "Not"
-        EqEq -> "EqEq"
-        Eq -> "Eq"
-        LtEq -> "LtEq"
-        Lt -> "Lt"
-        GtEq -> "GtEq"
-        Gt -> "Gt"
-        Slash -> "Slash"
-        String s -> "String(\(s))"
-        Number n ->
+        Number n   ->
             nStr = Num.toStr n
             "Number(\(nStr))"
-        Unknown c -> "Unknown: \(c)"
 
 digits = { start: At 0, end: At 9 } |> List.range |> List.map Num.toStr
 
