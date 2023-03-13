@@ -9,7 +9,7 @@ app "lox"
     ]
     provides [main] to cli
 
-expect compile "foo = 1 + 2" == [Ident "foo", Eq, Number "1", Plus, Number "2", Newline]
+expect compile "foo = 1 + 2" == [Ident "foo", Eq, Number "1", Plus, Number "2"]
 
 main =
     failure <- Task.onFail run
@@ -30,7 +30,7 @@ runCompiler = \file ->
     Stdout.line "Done compiling"
 
 compile = \src ->
-    src |> Str.graphemes |> List.append "\n" |> scan
+    src |> Str.graphemes |> scan
 
 scan = \chars ->
     scanHelp [] Start chars (List.len chars) 0
@@ -51,7 +51,8 @@ scanHelp = \tokens, state, list, length, index ->
             State newState ->
                 scanHelp tokens newState list length (index + 1)
     else
-        tokens
+        finalTokens = scanFinal state
+        List.concat tokens finalTokens
 
 scanNext = \char, state ->
     when state is
@@ -77,13 +78,13 @@ scanNext = \char, state ->
 
         Slash ->
             when char is
-                "/" -> Comment |> State
-                _   -> Slash   |> Emits
+                "/" -> "" |> Comment |> State
+                _   -> Slash         |> Emits
 
-        Comment ->
+        Comment c ->
             when char is
-                "\n" -> Newline |> Steps
-                _    -> Comment |> State
+                "\n" -> c |> Comment                    |> Emits
+                _    -> c |> Str.concat char |> Comment |> State
 
         String s ->
             when char is
@@ -117,6 +118,20 @@ scanNext = \char, state ->
             when char is
                 "=" -> GtEq |> Steps
                 _   -> Gt   |> Emits
+
+scanFinal = \state ->
+    when state is
+        Start     -> []
+        Integer n -> [Number n]
+        Float n   -> [Number n]
+        Ident a   -> [Ident a]
+        Slash     -> [Slash]
+        Comment c -> [Comment c]
+        String s  -> [String s]
+        Not       -> [Not]
+        Eq        -> [Eq]
+        Lt        -> [Lt]
+        Gt        -> [Gt]
 
 checkKeywords = \name ->
     when name is
