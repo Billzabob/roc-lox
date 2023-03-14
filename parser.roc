@@ -5,7 +5,7 @@ interface Parser
 parse = \tokens ->
     parseAll myParser tokens
 
-Foo a : [Gt]a -> [Parsed [Gt], ParseFailed]
+Foo a : [Gt]a -> [Parsed [Gt], ParseFailed, DeadEnd]
 
 foo : Foo *
 foo = \item ->
@@ -13,15 +13,12 @@ foo = \item ->
         Gt -> Parsed Gt
         _  -> ParseFailed
 
-makeParser = \f ->
-    \items, index ->
-        when List.get items index is
-            Ok item ->
-                when f item is
-                    Parsed a  -> ParsedIndex a (index + 1)
-                    ParseFailed -> ParseFailed
-            Err OutOfBounds ->
-               DeadEnd
+ makeParser : Foo * -> (List [Gt]*, Nat -> [Parsed [Gt], ParseFailed, DeadEnd])
+ makeParser = \f ->
+     \items, index ->
+         when List.get items index is
+             Ok item -> f item
+             Err OutOfBounds -> DeadEnd
 
 myParser = makeParser foo
 
