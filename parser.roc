@@ -5,13 +5,17 @@ interface Parser
 parse = \tokens ->
     parseAll myParser tokens
 
-Foo a : [Gt]a -> [Parsed [Gt], ParseFailed]
+plusParser = constant Plus
 
-foo : Foo *
-foo = \item ->
-    when item is
-        Gt -> Parsed Gt
-        _  -> ParseFailed
+gtOrLtParser = constant Gt |> orElse (constant Lt)
+
+myParser =
+    a, b <- combine plusParser gtOrLtParser
+    Pair a b
+
+constant = \a ->
+    item <- makeParser
+    if item == a then Parsed a else ParseFailed
 
 makeParser = \f ->
     \items, index ->
@@ -21,23 +25,36 @@ makeParser = \f ->
                     Parsed a  -> ParsedIndex a (index + 1)
                     ParseFailed -> ParseFailed
             Err OutOfBounds ->
-               DeadEnd
+               ParseFailed
 
-myParser = makeParser foo
+orElse = \parser1, parser2 ->
+    \items, index ->
+        when parser1 items index is
+            ParsedIndex item1 index1 -> ParsedIndex item1 index1
+            ParseFailed ->
+                when parser2 items index is
+                    ParsedIndex item2 index2 -> ParsedIndex item2 index2
+                    ParseFailed -> ParseFailed
 
-#combine = \parser1, parser2 ->
-#    \items, index ->
-#        when parser1 items index is
-#            Parsed item index ->
-                
+combine = \parser1, parser2, f ->
+    \items, index ->
+        when parser1 items index is
+            ParsedIndex item1 nextIndex ->
+                when parser2 items nextIndex is
+                    ParsedIndex item2 finalIndex ->
+                        ParsedIndex (f item1 item2) finalIndex
+                    ParseFailed -> ParseFailed
+            ParseFailed -> ParseFailed
 
 parseAll = \parser, items ->
     parseAllHelp parser items [] 0 (List.len items)
     
 parseAllHelp = \parser, items, parsedItems, index, length ->
     if index < length then
-        p = parser items index
-        b = List.append parsedItems p
-        parseAllHelp parser items b (index + 1) length
+        when parser items index is
+            ParsedIndex parsed newIndex ->
+                parseAllHelp parser items (List.append parsedItems parsed) newIndex length
+            ParseFailed ->
+                Err "Failed to parse"
     else
-        parsedItems
+        Ok parsedItems

@@ -11,7 +11,8 @@ app "lox"
     ]
     provides [main] to cli
 
-expect compile "foo = 1 + 2" == [ParseFailed, ParseFailed, ParseFailed, ParseFailed, ParseFailed]
+# expect compile "foo = 1 + 2" == Err "Failed to parse"
+expect compile "+<" == Ok [Pair Plus Lt]
 
 main =
     failure <- Task.onFail run
