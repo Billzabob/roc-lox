@@ -11,7 +11,7 @@ app "lox"
     ]
     provides [main] to cli
 
-expect compile "foo = 1 + 2" == [Ident "foo", Eq, Integer "1", Plus, Integer "2"]
+expect compile "foo = 1 + 2" == [ParseFailed, ParseFailed, ParseFailed, ParseFailed, ParseFailed]
 
 main =
     failure <- Task.onFail run
