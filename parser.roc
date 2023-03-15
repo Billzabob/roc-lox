@@ -15,36 +15,32 @@ myParser =
 
 constant = \a ->
     item <- makeParser
-    if item == a then Parsed a else ParseFailed
+    if item == a then ParseOk a else ParseErr
 
 makeParser = \f ->
     \items, index ->
         when List.get items index is
             Ok item ->
                 when f item is
-                    Parsed a  -> ParsedIndex a (index + 1)
-                    ParseFailed -> ParseFailed
+                    ParseOk a -> ParsedIndex a (index + 1)
+                    ParseErr  -> ParseErr
             Err OutOfBounds ->
-               ParseFailed
+               ParseErr
 
 orElse = \parser1, parser2 ->
     \items, index ->
         when parser1 items index is
-            ParsedIndex item1 index1 -> ParsedIndex item1 index1
-            ParseFailed ->
-                when parser2 items index is
-                    ParsedIndex item2 index2 -> ParsedIndex item2 index2
-                    ParseFailed -> ParseFailed
+            ParsedIndex a i -> ParsedIndex a i
+            ParseErr        -> parser2 items index
 
 combine = \parser1, parser2, f ->
     \items, index ->
         when parser1 items index is
-            ParsedIndex item1 nextIndex ->
-                when parser2 items nextIndex is
-                    ParsedIndex item2 finalIndex ->
-                        ParsedIndex (f item1 item2) finalIndex
-                    ParseFailed -> ParseFailed
-            ParseFailed -> ParseFailed
+            ParsedIndex a i1 ->
+                when parser2 items i1 is
+                    ParsedIndex b i2 -> ParsedIndex (f a b) i2
+                    ParseErr         -> ParseErr
+            ParseErr -> ParseErr
 
 parseAll = \parser, items ->
     parseAllHelp parser items [] 0 (List.len items)
@@ -52,9 +48,9 @@ parseAll = \parser, items ->
 parseAllHelp = \parser, items, parsedItems, index, length ->
     if index < length then
         when parser items index is
-            ParsedIndex parsed newIndex ->
-                parseAllHelp parser items (List.append parsedItems parsed) newIndex length
-            ParseFailed ->
+            ParsedIndex a i ->
+                parseAllHelp parser items (List.append parsedItems a) i length
+            ParseErr ->
                 Err "Failed to parse"
     else
         Ok parsedItems
