@@ -12,7 +12,7 @@ app "lox"
     provides [main] to cli
 
 # expect compile "foo = 1 + 2" == Err "Failed to parse"
-expect compile "+<" == Ok [Pair Plus Lt]
+expect compile "+++>" == Ok [ Pair (Many [Plus, Plus, Plus]) Gt ]
 
 main =
     failure <- Task.onFail run

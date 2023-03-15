@@ -5,7 +5,9 @@ interface Parser
 parse = \tokens ->
     parseAll myParser tokens
 
-plusOrIntParser = constant Plus |> orElse integerParser
+manyPlus = constant Plus |> many
+
+plusOrIntParser =  manyPlus |> orElse integerParser
 
 gtOrLtParser = constant Gt |> orElse (constant Lt)
 
@@ -47,7 +49,7 @@ many = \parser ->
 manyHelp = \parser, items, index, soFar ->
     when parser { items, index } is
         ParsedIndex a i -> manyHelp parser items i (List.append soFar a)
-        ParseErr        -> ParsedIndex soFar index
+        ParseErr        -> ParsedIndex (Many soFar) index
 
 orElse = \parser1, parser2 ->
     \input ->
