@@ -41,6 +41,14 @@ constant = \a ->
 ### Combinators ###
 ###################
 
+many = \parser ->
+    \{ items, index } -> manyHelp parser items index []
+
+manyHelp = \parser, items, index, soFar ->
+    when parser { items, index } is
+        ParsedIndex a i -> manyHelp parser items i (List.append soFar a)
+        ParseErr        -> ParsedIndex soFar index
+
 orElse = \parser1, parser2 ->
     \input ->
         when parser1 input is
