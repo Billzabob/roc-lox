@@ -11,8 +11,9 @@ app "lox"
     ]
     provides [main] to cli
 
-# expect compile "foo = 1 + 2" == Err "Failed to parse"
-expect compile "+++>" == Ok [ Pair (Many [Plus, Plus, Plus]) Gt ]
+expect
+    out = compile "!!!true"
+    out == Ok [ Unary ( Many [Not, Not, Not] ) ( Keyword True ) ]
 
 main =
     failure <- Task.onFail run

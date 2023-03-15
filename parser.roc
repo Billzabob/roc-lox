@@ -3,23 +3,40 @@ interface Parser
     imports []
 
 parse = \tokens ->
-    parseAll myParser tokens
+    parseAll expression tokens
 
-manyPlus = constant Plus |> many
+expression = unary
 
-plusOrIntParser =  manyPlus |> orElse integerParser
+#eqOrNotEq = constant Eq |> orElse (constant NotEq)
 
-gtOrLtParser = constant Gt |> orElse (constant Lt)
+#equalityRight = combine eqOrNotEq comparison \a, b -> Equalities a b
 
-integerParser =
-    item <- makeParser
-    when item is
-        Integer a -> ParseOk (Integer a)
-        _         -> ParseErr
+#equality = combine comparison (many equalityRight) \a, b -> Equality a b
 
-myParser =
-    a, b <- combine plusOrIntParser gtOrLtParser
-    Pair a b
+#compare = constant Gt |> orElse (constant GtEq) |> orElse (constant Lt) |> orElse (constant LtEq)
+
+#comparisonRight = combine compare term \a, b -> Comparisons a b
+
+#comparison = combine term (many comparisonRight) \a, b -> Comparison a b
+
+#plusMinus = constant Plus |> orElse (constant Minus)
+
+#termRight = combine plusMinus factor \a, b -> Terms a b
+
+#term = combine factor (many termRight) \a, b -> Term a b
+
+#divideMult = constant Div |> orElse (constant Mult)
+
+#factorRight = combine divideMult unary \a, b -> Factors a b
+
+#factor = combine unary (many factorRight) \a, b -> Factor a b
+
+notMinus = constant Not |> orElse (constant Minus)
+
+unary = combine (many notMinus) primary \a, b -> Unary a b
+
+# TODO: Recurse
+primary = constant (Keyword True) |> orElse (constant (Keyword False))
 
 ################
 ### Builders ###

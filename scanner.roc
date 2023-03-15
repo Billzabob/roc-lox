@@ -91,16 +91,16 @@ scanNext = \char, state ->
 scanFinal = \state ->
     when state is
         Start     -> []
-        Comment s -> Comment s |> List.single
-        Eq        -> Eq        |> List.single
-        Float s   -> Float s   |> List.single
-        Gt        -> Gt        |> List.single
-        Ident s   -> Ident s   |> List.single
-        Integer s -> Integer s |> List.single
-        Lt        -> Lt        |> List.single
-        Not       -> Not       |> List.single
-        Slash     -> Slash     |> List.single
-        String s  -> String s  |> List.single
+        Comment s -> Comment s       |> List.single
+        Eq        -> Eq              |> List.single
+        Float s   -> Float s         |> List.single
+        Gt        -> Gt              |> List.single
+        Ident s   -> checkKeywords s |> List.single
+        Integer s -> Integer s       |> List.single
+        Lt        -> Lt              |> List.single
+        Not       -> Not             |> List.single
+        Slash     -> Slash           |> List.single
+        String s  -> String s        |> List.single
 
 checkKeywords = \name ->
     when name is
