@@ -67,13 +67,14 @@ lazyExpression = notMinus |> surroundedBy leftParen rightParen
 ################
 
 makeParser = \f ->
-    \items ->
-        when items is
-            [item, .. as rest] ->
+    \{ items, index } ->
+        when List.get items index is
+            Ok item ->
                 when f item is
-                    ParseOk a -> ParsedResult a rest
+                    ParseOk a -> ParsedIndex a (index + 1)
                     ParseErr  -> ParseErr
-            _ -> ParseErr
+            Err OutOfBounds ->
+               ParseErr
 
 const = \a ->
     item <- makeParser
@@ -83,29 +84,34 @@ const = \a ->
 ### Combinators ###
 ###################
 
-many = \parser -> \items ->
-    manyHelp = \soFar, rest1 ->
-        when parser rest1 is
-            ParsedResult a rest2 -> soFar |> List.append a |> manyHelp rest2
-            ParseErr             -> ParsedResult soFar rest1
-    manyHelp [] items
+many = \parser ->
+    \{ items, index } -> manyHelp parser items index []
 
-orElse = \parser1, parser2 -> \input ->
-    when parser1 input is
-        ParsedResult a rest -> ParsedResult a rest
-        ParseErr            -> parser2 input
+manyHelp = \parser, items, index, soFar ->
+    when parser { items, index } is
+        ParsedIndex a i -> manyHelp parser items i (List.append soFar a)
+        ParseErr        -> ParsedIndex (Many soFar) index
+
+orElse = \parser1, parser2 ->
+    \input ->
+        when parser1 input is
+            ParsedIndex a i -> ParsedIndex a i
+            ParseErr        -> parser2 input
 
 
-combine = \parser1, parser2, f -> \input ->
-    when parser1 input is
-        ParsedResult a rest1 ->
-            when parser2 rest1 is
-                ParsedResult b rest2 -> ParsedResult (f a b) rest2
-                ParseErr             -> ParseErr
-        ParseErr -> ParseErr
+combine = \parser1, parser2, f ->
+    \input ->
+        when parser1 input is
+            ParsedIndex a index ->
+                when parser2 { items: input.items, index } is
+                    ParsedIndex b i -> ParsedIndex (f a b) i
+                    ParseErr         -> ParseErr
+            ParseErr -> ParseErr
 
+# TODO: Naming
 andThenL = \parser1, parser2 -> combine parser1 parser2 \a, _b -> a
 
+# TODO: Naming
 andThenR = \parser1, parser2 -> combine parser1 parser2 \_a, b -> b
 
 surroundedBy = \parser, left, right -> left |> andThenR parser |> andThenL right
@@ -115,13 +121,15 @@ surroundedBy = \parser, left, right -> left |> andThenR parser |> andThenL right
 ###############
 
 parseAll = \parser, items ->
-    parseAllHelp = \rest1, parsedItems ->
-        if List.isEmpty rest1 then
-            Ok parsedItems
-        else
-            when parser items is
-                ParsedResult a rest2 ->
-                    parseAllHelp rest2 (List.append parsedItems a)
-                ParseErr ->
-                    Err "Failed to parse"
-    parseAllHelp items []
+    parseAllHelp parser items [] 0 (List.len items)
+    
+# TODO: Use slices instead of indexing
+parseAllHelp = \parser, items, parsedItems, index, length ->
+    if index < length then
+        when parser { items, index } is
+            ParsedIndex a i ->
+                parseAllHelp parser items (List.append parsedItems a) i length
+            ParseErr ->
+                Err "Failed to parse"
+    else
+        Ok parsedItems
