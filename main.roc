@@ -11,10 +11,6 @@ app "lox"
     ]
     provides [main] to cli
 
-expect
-    out = compile "!!!true"
-    out == Ok [ Unary ( Many [Not, Not, Not] ) ( Keyword True ) ]
-
 main =
     failure <- Task.onFail run
     when failure is
@@ -30,8 +26,10 @@ run =
 runRepl = Stdout.line "Running REPL"
 
 runCompiler = \file ->
-    _ <- file |> Path.fromStr |> File.readUtf8 |> Task.map compile |> await
-    Stdout.line "Done compiling"
+    a <- file |> Path.fromStr |> File.readUtf8 |> Task.map compile |> await
+    when a is
+        Ok  _ -> Stdout.line "Done compiling"
+        Err _ -> Stdout.line "Failed compiling"
 
 compile = \src ->
     src |> Str.graphemes |> scan |> parse

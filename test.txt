@@ -1,4 +1,1 @@
-// This is a comment
-12345.123
-+!=+!+"howdy"++
-// This is a comment
+!!!true != -1234.5 + 222 > "test" * nil

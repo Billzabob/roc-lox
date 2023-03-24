@@ -5,38 +5,62 @@ interface Parser
 parse = \tokens ->
     parseAll expression tokens
 
-expression = unary
+expression = equality
 
-#eqOrNotEq = constant Eq |> orElse (constant NotEq)
+eqOrNotEq = const Eq |> orElse (const NotEq)
 
-#equalityRight = combine eqOrNotEq comparison \a, b -> Equalities a b
+equalityRight = combine eqOrNotEq comparison Equalities
 
-#equality = combine comparison (many equalityRight) \a, b -> Equality a b
+equality = combine comparison (many equalityRight) Equality
 
-#compare = constant Gt |> orElse (constant GtEq) |> orElse (constant Lt) |> orElse (constant LtEq)
+compare = const Gt |> orElse (const GtEq) |> orElse (const Lt) |> orElse (const LtEq)
 
-#comparisonRight = combine compare term \a, b -> Comparisons a b
+comparisonRight = combine compare term Comparisons
 
-#comparison = combine term (many comparisonRight) \a, b -> Comparison a b
+comparison = combine term (many comparisonRight) Comparison
 
-#plusMinus = constant Plus |> orElse (constant Minus)
+plusMinus = const Plus |> orElse (const Minus)
 
-#termRight = combine plusMinus factor \a, b -> Terms a b
+termRight = combine plusMinus factor Terms
 
-#term = combine factor (many termRight) \a, b -> Term a b
+term = combine factor (many termRight) Term
 
-#divideMult = constant Div |> orElse (constant Mult)
+divideMult = const Div |> orElse (const Mult)
 
-#factorRight = combine divideMult unary \a, b -> Factors a b
+factorRight = combine divideMult unary Factors
 
-#factor = combine unary (many factorRight) \a, b -> Factor a b
+factor = combine unary (many factorRight) Factor
 
-notMinus = constant Not |> orElse (constant Minus)
+notMinus = const Not |> orElse (const Minus)
 
-unary = combine (many notMinus) primary \a, b -> Unary a b
+unary = combine (many notMinus) primary Unary
 
-# TODO: Recurse
-primary = constant (Keyword True) |> orElse (constant (Keyword False))
+primary =
+    const (Keyword True)
+    |> orElse (const (Keyword False))
+    |> orElse (const (Keyword Nil))
+    |> orElse string
+    |> orElse number
+    |> orElse lazyExpression
+
+string =
+    item <- makeParser
+    when item is
+        String s -> ParseOk (String s)
+        _        -> ParseErr
+
+number =
+    item <- makeParser
+    when item is
+        Integer n -> ParseOk (Integer n)
+        Float n   -> ParseOk (Float n)
+        _         -> ParseErr
+
+leftParen = const LeftParen
+rightParen = const RightParen
+
+# TODO: Figure out how to replace notMinus with expression
+lazyExpression = notMinus |> surroundedBy leftParen rightParen
 
 ################
 ### Builders ###
@@ -52,7 +76,7 @@ makeParser = \f ->
             Err OutOfBounds ->
                ParseErr
 
-constant = \a ->
+const = \a ->
     item <- makeParser
     if item == a then ParseOk a else ParseErr
 
@@ -74,6 +98,7 @@ orElse = \parser1, parser2 ->
             ParsedIndex a i -> ParsedIndex a i
             ParseErr        -> parser2 input
 
+
 combine = \parser1, parser2, f ->
     \input ->
         when parser1 input is
@@ -83,6 +108,14 @@ combine = \parser1, parser2, f ->
                     ParseErr         -> ParseErr
             ParseErr -> ParseErr
 
+# TODO: Naming
+andThenL = \parser1, parser2 -> combine parser1 parser2 \a, _b -> a
+
+# TODO: Naming
+andThenR = \parser1, parser2 -> combine parser1 parser2 \_a, b -> b
+
+surroundedBy = \parser, left, right -> left |> andThenR parser |> andThenL right
+
 ###############
 ### Runners ###
 ###############
@@ -90,6 +123,7 @@ combine = \parser1, parser2, f ->
 parseAll = \parser, items ->
     parseAllHelp parser items [] 0 (List.len items)
     
+# TODO: Use slices instead of indexing
 parseAllHelp = \parser, items, parsedItems, index, length ->
     if index < length then
         when parser { items, index } is
