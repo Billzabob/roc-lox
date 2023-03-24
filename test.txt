@@ -1,1 +1,23 @@
 !!!true != -1234.5 + 222 > "test" * nil
+
+
+
+This expression value is a:
+
+    List [Float #a, Integer #b, Keyword [False, Nil, True]*, LeftParen,
+    Minus, Not, RightParen, String #d]* -> [ParseErr,
+    ParsedIndex [Unary (List [Float *, Integer *, Keyword [False, Nil,
+    True], LeftParen, Minus, Not, RightParen, String *]) [Float *,
+    Integer *, Keyword [False, Nil, True], LeftParen, Minus, Not,
+        RightParen, String *]] (List [Float *, Integer *, Keyword [False,
+        Nil, True], LeftParen, Minus, Not, RightParen,
+        String *])] | #b has Eq, #a has Eq, #d has Eq
+
+But parseAll needs its 1st argument to be:
+
+    List [Float *, Integer *, Keyword [False, Nil, True]*, LeftParen,
+    Minus, Not, RightParen, String *]* -> [ParseErr,
+    ParsedIndex [Unary (List [Float *, Integer *, Keyword [False, Nil,
+    True], LeftParen, Minus, Not, RightParen, String *]) [Float *,
+    Integer *, Keyword [False, Nil, True], LeftParen, Minus, Not,
+        RightParen, String *]] (Int Natural)]
