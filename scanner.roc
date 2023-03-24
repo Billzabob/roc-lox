@@ -3,24 +3,25 @@ interface Scanner
     imports []
 
 scan = \chars ->
-    scanHelp [] Start chars
+    scanHelp [] Start chars 0
 
-scanHelp = \tokens, state, chars ->
-    when chars is
-        [] -> tokens |> List.concat (scanFinal state)
-        [char, .. as next] as same ->
+scanHelp = \tokens, state, chars, index ->
+    when List.get chars index is
+        Ok char ->
             when scanNext char state is
                 # Steps: produce token, advance to next char, reset to Start state
                 Steps token ->
                     newTokens = tokens |> List.append token
-                    scanHelp newTokens Start next
+                    scanHelp newTokens Start chars (index + 1)
                 # Emits: produce token, stay at current char, reset to Start state
                 Emits token ->
                     newTokens = tokens |> List.append token
-                    scanHelp newTokens Start same
+                    scanHelp newTokens Start chars index
                 # State: do not produce token, advance to next char, set new state
                 State newState ->
-                    scanHelp tokens newState next
+                    scanHelp tokens newState chars (index + 1)
+        Err OutOfBounds ->
+            tokens |> List.concat (scanFinal state)
 
 scanNext = \char, state ->
     when state is
