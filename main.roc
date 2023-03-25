@@ -25,11 +25,21 @@ run =
 
 runRepl = Stdout.line "Running REPL"
 
+expectedResult = [
+    [PlusOrMinus [Minus, Plus, Minus, Plus], Eq],
+    [PlusOrMinus [Plus, Minus, Plus, Minus], Eq]
+]
+
 runCompiler = \file ->
     a <- file |> Path.fromStr |> File.readUtf8 |> Task.map compile |> await
     when a is
-        Ok  _ -> Stdout.line "Done compiling"
-        Err _ -> Stdout.line "Failed compiling"
+        Ok result ->
+            if result == expectedResult then
+                Stdout.line "Done good"
+            else
+                Stdout.line "Done bad"
+        Err _ ->
+            Stdout.line "Failed compiling"
 
 compile = \src ->
     src |> Str.graphemes |> scan |> parse
