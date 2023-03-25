@@ -25,9 +25,8 @@ run =
 
 runRepl = Stdout.line "Running REPL"
 
-# expectedResult = [Keyword False]
 expectedResult = [
-    [Plus]
+    Factor [Keyword False, Multiply (Keyword False)]
 ]
 
 runCompiler = \file ->

@@ -9,28 +9,25 @@ Parser    in out : Input in -> [ParsedIndex out Nat, ParseErr]
 parse = \tokens ->
     parseAll expression tokens
 
-# true  = const (Keyword True)
-# false = const (Keyword False)
-# nil   = const (Keyword Nil)
+true  = const (Keyword True)
+false = const (Keyword False)
+nil   = const (Keyword Nil)
 
-# number =
-#     item <- makeParser
-#     when item is
-#         Integer n -> ParseOk (Integer n)
-#         Float   n -> ParseOk (Float n)
-#         _         -> ParseErr
+number =
+    item <- makeParser
+    when item is
+        Integer n -> ParseOk (Integer n)
+        Float   n -> ParseOk (Float n)
+        _         -> ParseErr
 
-# string =
-#     item <- makeParser
-#     when item is
-#         String s -> ParseOk (String s)
-#         _        -> ParseErr
-
-minus = const Minus
-plus  = const Plus
+string =
+    item <- makeParser
+    when item is
+        String s -> ParseOk (String s)
+        _        -> ParseErr
 
 # Will parse any number of '-' followed by a single '+'
-recurTest = plus |> map List.single |> orElse (minus |> prepend recurTest)
+# recurTest = plus |> map List.single |> orElse (minus |> prepend recurTest)
 
 # expression     → equality ;
 # equality       → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -42,10 +39,30 @@ recurTest = plus |> map List.single |> orElse (minus |> prepend recurTest)
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = recurTest
+expression = factor
 
-# primary = 
-#     number |> orElse string |> orElse true |> orElse false |> orElse nil
+# [False, Mult, False, Div, Nil, Mult, True]
+# [False, Mult False, Div Nil, Mult True]
+
+mult = const Mult
+div  = const Div
+
+multOrDiv = mult |> orElse div
+
+foo = combine multOrDiv primary \a, b ->
+    when a is
+        Mult -> Multiply b
+        Div  -> Divide b
+        # TODO: Why is this necessary???
+        _    -> crash "WHAT"
+
+factor = primary |> prepend (many foo) |> map Factor
+
+# TODO: Recursion
+# unary = 
+
+# TODO: Recursion
+primary = number |> orElse string |> orElse true |> orElse false |> orElse nil
 
 ################
 ### Builders ###
