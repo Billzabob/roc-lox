@@ -39,7 +39,21 @@ string =
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = comparison
+expression = equality
+
+eqeq = const EqEq
+neq  = const NotEq
+
+eqOrNot = eqeq |> orElse neq
+
+equalities = combine eqOrNot comparison \a, b ->
+    when a is
+        EqEq  -> EqEq2  b
+        NotEq -> NotEq2 b
+        # TODO: Why is this necessary???
+        _    -> crash "WHAT"
+
+equality = comparison |> prepend (many equalities) |> map Equality
 
 lt  = const Lt
 lte = const LtEq
