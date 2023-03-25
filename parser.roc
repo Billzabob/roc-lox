@@ -39,7 +39,25 @@ string =
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = term
+expression = comparison
+
+lt  = const Lt
+lte = const LtEq
+gt  = const Gt
+gte = const GtEq
+
+compare = lt |> orElse lte |> orElse gt |> orElse gte
+
+comparisons = combine compare term \a, b ->
+    when a is
+        Lt   -> Lt2 b
+        LtEq -> Lte b
+        Gt   -> Gt2 b
+        GtEq -> Gte b
+        # TODO: Why is this necessary???
+        _    -> crash "WHAT"
+
+comparison = term |> prepend (many comparisons) |> map Comparison
 
 minus = const Minus
 plus  = const Plus

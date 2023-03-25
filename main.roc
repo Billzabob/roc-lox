@@ -26,7 +26,7 @@ run =
 runRepl = Stdout.line "Running REPL"
 
 expectedResult = [
-    Term [Factor [Keyword False, Multiply (Keyword False)]]
+    Comparison [Term [Factor [Keyword False, Multiply (Keyword False)]]]
 ]
 
 runCompiler = \file ->
