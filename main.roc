@@ -25,9 +25,9 @@ run =
 
 runRepl = Stdout.line "Running REPL"
 
+# expectedResult = [Keyword False]
 expectedResult = [
-    [PlusOrMinus [Minus, Plus, Minus, Plus], Eq],
-    [PlusOrMinus [Plus, Minus, Plus, Minus], Eq]
+    [Plus]
 ]
 
 runCompiler = \file ->

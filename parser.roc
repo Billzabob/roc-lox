@@ -9,13 +9,43 @@ Parser    in out : Input in -> [ParsedIndex out Nat, ParseErr]
 parse = \tokens ->
     parseAll expression tokens
 
-plus   = const Plus
-minus  = const Minus
-equals = const Eq
+# true  = const (Keyword True)
+# false = const (Keyword False)
+# nil   = const (Keyword Nil)
 
-manyPlusOrMinus = plus |> orElse minus |> many |> map PlusOrMinus
+# number =
+#     item <- makeParser
+#     when item is
+#         Integer n -> ParseOk (Integer n)
+#         Float   n -> ParseOk (Float n)
+#         _         -> ParseErr
 
-expression = manyPlusOrMinus |> andThen equals
+# string =
+#     item <- makeParser
+#     when item is
+#         String s -> ParseOk (String s)
+#         _        -> ParseErr
+
+minus = const Minus
+plus  = const Plus
+
+# Will parse any number of '-' followed by a single '+'
+recurTest = plus |> map List.single |> orElse (minus |> prepend recurTest)
+
+# expression     → equality ;
+# equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+# comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+# term           → factor ( ( "-" | "+" ) factor )* ;
+# factor         → unary ( ( "/" | "*" ) unary )* ;
+# unary          → ( "!" | "-" ) unary
+#                | primary ;
+# primary        → NUMBER | STRING | "true" | "false" | "nil"
+#                | "(" expression ")" ;
+
+expression = recurTest
+
+# primary = 
+#     number |> orElse string |> orElse true |> orElse false |> orElse nil
 
 ################
 ### Builders ###
@@ -78,6 +108,9 @@ andThen = \parser1, parser2 -> combine parser1 parser2 \a, b -> [a, b]
 
 append : Parser in (List out), Parser in out -> Parser in (List out)
 append = \parser1, parser2 -> combine parser1 parser2 \a, b -> a |> List.append b
+
+prepend : Parser in out, Parser in (List out) -> Parser in (List out)
+prepend = \parser1, parser2 -> combine parser1 parser2 \a, b -> b |> List.prepend a
 
 andThenL : Parser in out, Parser in * -> Parser in out
 andThenL = \parser1, parser2 -> combine parser1 parser2 \a, _b -> a
