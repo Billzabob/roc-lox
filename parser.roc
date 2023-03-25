@@ -39,24 +39,35 @@ string =
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = factor
+expression = term
 
-# [False, Mult, False, Div, Nil, Mult, True]
-# [False, Mult False, Div Nil, Mult True]
+minus = const Minus
+plus  = const Plus
+
+minusOrPlus = minus |> orElse plus
+
+terms = combine minusOrPlus factor \a, b ->
+    when a is
+        Minus -> Minus2 b
+        Plus  -> Plus2 b
+        # TODO: Why is this necessary???
+        _    -> crash "WHAT"
+
+term = factor |> prepend (many terms) |> map Term
 
 mult = const Mult
 div  = const Div
 
 multOrDiv = mult |> orElse div
 
-foo = combine multOrDiv primary \a, b ->
+factors = combine multOrDiv primary \a, b ->
     when a is
         Mult -> Multiply b
         Div  -> Divide b
         # TODO: Why is this necessary???
         _    -> crash "WHAT"
 
-factor = primary |> prepend (many foo) |> map Factor
+factor = primary |> prepend (many factors) |> map Factor
 
 # TODO: Recursion
 # unary = 
