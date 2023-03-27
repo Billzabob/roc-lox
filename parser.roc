@@ -23,27 +23,27 @@ parse = \tokens ->
 #         Boo -> test1 a
 #         _   -> test2 a
 
-plus : List [Plus]* -> Result [Plus2] Str
+plus : List [Plus]* -> Result [Plus] Str
 plus = \item ->
     when List.get item 0 is
         Ok a ->
             when a is
-                Plus -> Ok Plus2
+                Plus -> Ok Plus
                 _    -> Err "uh oh"
         Err OutOfBounds ->
             Err "uh oh"
 
-minus : List [Minus]* -> Result [Minus2] Str
+minus : List [Minus]* -> Result [Minus] Str
 minus = \item ->
     when List.get item 0 is
         Ok a ->
             when a is
-                Minus -> Ok Minus2
+                Minus -> Ok Minus
                 _     -> Err "uh oh"
         Err OutOfBounds ->
             Err "uh oh"
 
-mOrP : List [Plus, Minus]* -> Result [Plus2, Minus2] Str
+mOrP : List [Plus, Minus]* -> Result [Plus, Minus] Str
 mOrP = \input ->
     when plus input is
         Ok  a -> Ok a
