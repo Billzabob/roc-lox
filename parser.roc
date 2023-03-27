@@ -26,24 +26,18 @@ Input a : { items: List a, index: Nat }
 #         _   -> test2 a
 
 plus : Input [Plus]* -> Result [ParseOut [Plus] Nat] Str
-plus = \{items, index} ->
-    when List.get items index is
-        Ok a ->
-            when a is
-                Plus -> Ok (ParseOut Plus (index + 1))
-                _    -> Err "uh oh"
-        Err OutOfBounds ->
-            Err "uh oh"
+plus = \input ->
+    item <- makeParser input
+    when item is
+        Plus -> Ok Plus
+        _    -> Err "uh oh"
 
 minus : Input [Minus]* -> Result [ParseOut [Minus] Nat] Str
-minus = \{items, index} ->
-    when List.get items index is
-        Ok a ->
-            when a is
-                Minus -> Ok (ParseOut Minus (index + 1))
-                _     -> Err "uh oh"
-        Err OutOfBounds ->
-            Err "uh oh"
+minus = \input ->
+    item <- makeParser input
+        when item is
+            Minus -> Ok Minus
+            _     -> Err "uh oh"
 
 orElse: (Input a -> Result [ParseOut c Nat] Str), (Input a -> Result [ParseOut c Nat] Str) -> (Input a -> Result [ParseOut c Nat] Str)
 orElse = \parser1, parser2 ->
@@ -60,15 +54,14 @@ mOrP = plus |> orElse minus
 ### Builders ###
 ################
 
-makeParser = \f ->
-    \item ->
-        when f item is
-            ParseOk a -> Ok a
-            ParseErr  -> Err "uh oh"
-
-const = \a ->
-    item <- makeParser
-    if item == a then ParseOk a else ParseErr
+makeParser = \{items, index}, f ->
+    when List.get items index is
+        Ok a ->
+            when f a is
+                Ok out -> Ok (ParseOut out (index + 1))
+                Err _  -> Err "uh oh"
+        Err OutOfBounds ->
+            Err "uh oh"
 
 ###################
 ### Combinators ###
@@ -120,8 +113,8 @@ parseAll = \parser, items ->
 parseAllHelp = \parser, items, parsedItems, index, length ->
     if index < length then
         when parser { items, index } is
-            Ok a ->
-                parseAllHelp parser items (List.append parsedItems a) 0 length
+            Ok (ParseOut a newIndex) ->
+                parseAllHelp parser items (List.append parsedItems a) newIndex length
             Err _ ->
                 Err "Failed to parse"
     else
