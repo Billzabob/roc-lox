@@ -3,55 +3,51 @@ interface Parser
     imports []
 
 parse = \tokens ->
-    when List.get tokens 0 is
-        Ok  a -> mOrP a
-        Err _ -> Err "uh oh"
+    mOrP tokens
 
-test1 : [Foo]* -> [Bar, Baz]
-test1 = \a ->
-    when a is
-        Foo -> Bar
-        _   -> Baz
+# test1 : [Foo]* -> [Bar, Baz]
+# test1 = \a ->
+#     when a is
+#         Foo -> Bar
+#         _   -> Baz
 
-test2 : [Goo]* -> [Car, Caz]
-test2 = \a ->
-    when a is
-        Goo -> Car
-        _   -> Caz
+# test2 : [Goo]* -> [Car, Caz]
+# test2 = \a ->
+#     when a is
+#         Goo -> Car
+#         _   -> Caz
 
-test3 : [Boo, Foo, Goo]* -> [Bar, Baz, Car, Caz]
-test3 = \a ->
-    when a is
-        Boo -> test1 a
-        _   -> test2 a
+# test3 : [Boo, Foo, Goo]* -> [Bar, Baz, Car, Caz]
+# test3 = \a ->
+#     when a is
+#         Boo -> test1 a
+#         _   -> test2 a
 
-plus : [Plus]* -> Result [Plus2] Str
+plus : List [Plus]* -> Result [Plus2] Str
 plus = \item ->
-    when item is
-        Plus -> Ok Plus2
-        _    -> Err "uh oh"
+    when List.get item 0 is
+        Ok a ->
+            when a is
+                Plus -> Ok Plus2
+                _    -> Err "uh oh"
+        Err OutOfBounds ->
+            Err "uh oh"
 
-minus : [Minus]* -> Result [Minus2] Str
+minus : List [Minus]* -> Result [Minus2] Str
 minus = \item ->
-    when item is
-        Minus -> Ok Minus2
-        _     -> Err "uh oh"
+    when List.get item 0 is
+        Ok a ->
+            when a is
+                Minus -> Ok Minus2
+                _     -> Err "uh oh"
+        Err OutOfBounds ->
+            Err "uh oh"
 
-mOrP : [Plus, Minus]* -> Result [Plus2, Minus2] Str
+mOrP : List [Plus, Minus]* -> Result [Plus2, Minus2] Str
 mOrP = \input ->
     when plus input is
         Ok  a -> Ok a
         Err _ -> minus input
-
-# expression     → equality ;
-# equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-# comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-# term           → factor ( ( "-" | "+" ) factor )* ;
-# factor         → unary ( ( "/" | "*" ) unary )* ;
-# unary          → ( "!" | "-" ) unary
-#                | primary ;
-# primary        → NUMBER | STRING | "true" | "false" | "nil"
-#                | "(" expression ")" ;
 
 ################
 ### Builders ###
