@@ -45,11 +45,16 @@ minus = \{items, index} ->
         Err OutOfBounds ->
             Err "uh oh"
 
+orElse: (Input a -> Result c Str), (Input a -> Result c Str) -> (Input a -> Result c Str)
+orElse = \parser1, parser2 ->
+    \input ->
+        when parser1 input is
+            Ok  a -> Ok a
+            Err _ -> parser2 input
+
+
 mOrP : Input [Plus, Minus]* -> Result [Plus, Minus] Str
-mOrP = \input ->
-    when plus input is
-        Ok  a -> Ok a
-        Err _ -> minus input
+mOrP = plus |> orElse minus
 
 ################
 ### Builders ###
