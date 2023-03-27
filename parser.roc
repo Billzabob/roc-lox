@@ -3,7 +3,9 @@ interface Parser
     imports []
 
 parse = \tokens ->
-    mOrP tokens
+    parseAll mOrP tokens
+
+Input a : { items: List a, index: Nat }
 
 # test1 : [Foo]* -> [Bar, Baz]
 # test1 = \a ->
@@ -23,9 +25,9 @@ parse = \tokens ->
 #         Boo -> test1 a
 #         _   -> test2 a
 
-plus : List [Plus]* -> Result [Plus] Str
-plus = \item ->
-    when List.get item 0 is
+plus : Input [Plus]* -> Result [Plus] Str
+plus = \{items, index} ->
+    when List.get items index is
         Ok a ->
             when a is
                 Plus -> Ok Plus
@@ -33,9 +35,9 @@ plus = \item ->
         Err OutOfBounds ->
             Err "uh oh"
 
-minus : List [Minus]* -> Result [Minus] Str
-minus = \item ->
-    when List.get item 0 is
+minus : Input [Minus]* -> Result [Minus] Str
+minus = \{items, index} ->
+    when List.get items index is
         Ok a ->
             when a is
                 Minus -> Ok Minus
@@ -43,7 +45,7 @@ minus = \item ->
         Err OutOfBounds ->
             Err "uh oh"
 
-mOrP : List [Plus, Minus]* -> Result [Plus, Minus] Str
+mOrP : Input [Plus, Minus]* -> Result [Plus, Minus] Str
 mOrP = \input ->
     when plus input is
         Ok  a -> Ok a
@@ -113,9 +115,9 @@ parseAll = \parser, items ->
 parseAllHelp = \parser, items, parsedItems, index, length ->
     if index < length then
         when parser { items, index } is
-            ParsedIndex a i ->
-                parseAllHelp parser items (List.append parsedItems a) i length
-            ParseErr ->
+            Ok a ->
+                parseAllHelp parser items (List.append parsedItems a) 0 length
+            Err _ ->
                 Err "Failed to parse"
     else
         Ok parsedItems

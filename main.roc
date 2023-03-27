@@ -25,7 +25,7 @@ run =
 
 runRepl = Stdout.line "Running REPL"
 
-expectedResult = Plus
+expectedResult = [Plus]
 
 runCompiler = \file ->
     a <- file |> Path.fromStr |> File.readUtf8 |> Task.map compile |> await
