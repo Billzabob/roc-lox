@@ -25,27 +25,27 @@ Input a : { items: List a, index: Nat }
 #         Boo -> test1 a
 #         _   -> test2 a
 
-plus : Input [Plus]* -> Result [Plus] Str
+plus : Input [Plus]* -> Result [ParseOut [Plus] Nat] Str
 plus = \{items, index} ->
     when List.get items index is
         Ok a ->
             when a is
-                Plus -> Ok Plus
+                Plus -> Ok (ParseOut Plus (index + 1))
                 _    -> Err "uh oh"
         Err OutOfBounds ->
             Err "uh oh"
 
-minus : Input [Minus]* -> Result [Minus] Str
+minus : Input [Minus]* -> Result [ParseOut [Minus] Nat] Str
 minus = \{items, index} ->
     when List.get items index is
         Ok a ->
             when a is
-                Minus -> Ok Minus
+                Minus -> Ok (ParseOut Minus (index + 1))
                 _     -> Err "uh oh"
         Err OutOfBounds ->
             Err "uh oh"
 
-orElse: (Input a -> Result c Str), (Input a -> Result c Str) -> (Input a -> Result c Str)
+orElse: (Input a -> Result [ParseOut c Nat] Str), (Input a -> Result [ParseOut c Nat] Str) -> (Input a -> Result [ParseOut c Nat] Str)
 orElse = \parser1, parser2 ->
     \input ->
         when parser1 input is
@@ -53,7 +53,7 @@ orElse = \parser1, parser2 ->
             Err _ -> parser2 input
 
 
-mOrP : Input [Plus, Minus]* -> Result [Plus, Minus] Str
+mOrP : Input [Plus, Minus]* -> Result [ParseOut [Plus, Minus] Nat] Str
 mOrP = plus |> orElse minus
 
 ################
