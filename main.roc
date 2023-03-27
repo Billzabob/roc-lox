@@ -25,9 +25,7 @@ run =
 
 runRepl = Stdout.line "Running REPL"
 
-expectedResult = [
-    Equality [Comparison [Term [Factor [Keyword False, Multiply (Keyword False)]]]]
-]
+expectedResult = Plus
 
 runCompiler = \file ->
     a <- file |> Path.fromStr |> File.readUtf8 |> Task.map compile |> await

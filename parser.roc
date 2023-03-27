@@ -2,32 +2,46 @@ interface Parser
     exposes [parse]
     imports []
 
-Input     in : { items: List in, index: Nat }
-ParseFunc in out : in -> [ParseOk out, ParseErr]
-Parser    in out : Input in -> [ParsedIndex out Nat, ParseErr]
-
 parse = \tokens ->
-    parseAll expression tokens
+    when List.get tokens 0 is
+        Ok  a -> mOrP a
+        Err _ -> Err "uh oh"
 
-true  = const (Keyword True)
-false = const (Keyword False)
-nil   = const (Keyword Nil)
+test1 : [Foo]* -> [Bar, Baz]
+test1 = \a ->
+    when a is
+        Foo -> Bar
+        _   -> Baz
 
-number =
-    item <- makeParser
+test2 : [Goo]* -> [Car, Caz]
+test2 = \a ->
+    when a is
+        Goo -> Car
+        _   -> Caz
+
+test3 : [Boo, Foo, Goo]* -> [Bar, Baz, Car, Caz]
+test3 = \a ->
+    when a is
+        Boo -> test1 a
+        _   -> test2 a
+
+plus : [Plus]* -> Result [Plus2] Str
+plus = \item ->
     when item is
-        Integer n -> ParseOk (Integer n)
-        Float   n -> ParseOk (Float n)
-        _         -> ParseErr
+        Plus -> Ok Plus2
+        _    -> Err "uh oh"
 
-string =
-    item <- makeParser
+minus : [Minus]* -> Result [Minus2] Str
+minus = \item ->
     when item is
-        String s -> ParseOk (String s)
-        _        -> ParseErr
+        Minus -> Ok Minus2
+        _     -> Err "uh oh"
 
-# Will parse any number of '-' followed by a single '+'
-# recurTest = plus |> map List.single |> orElse (minus |> prepend recurTest)
+mOrP : [Plus, Minus]* -> Result [Plus2, Minus2] Str
+mOrP = \input ->
+    when plus input is
+        Ok  a -> Ok a
+        Err _ -> minus input
 
 # expression     → equality ;
 # equality       → comparison ( ( "!=" | "==" ) comparison )* ;
@@ -39,88 +53,15 @@ string =
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = equality
-
-eqeq = const EqEq
-neq  = const NotEq
-
-eqOrNot = eqeq |> orElse neq
-
-equalities = combine eqOrNot comparison \a, b ->
-    when a is
-        EqEq  -> EqEq2  b
-        NotEq -> NotEq2 b
-        # TODO: Why is this necessary???
-        _    -> crash "WHAT"
-
-equality = comparison |> prepend (many equalities) |> map Equality
-
-lt  = const Lt
-lte = const LtEq
-gt  = const Gt
-gte = const GtEq
-
-compare = lt |> orElse lte |> orElse gt |> orElse gte
-
-comparisons = combine compare term \a, b ->
-    when a is
-        Lt   -> Lt2 b
-        LtEq -> Lte b
-        Gt   -> Gt2 b
-        GtEq -> Gte b
-        # TODO: Why is this necessary???
-        _    -> crash "WHAT"
-
-comparison = term |> prepend (many comparisons) |> map Comparison
-
-minus = const Minus
-plus  = const Plus
-
-minusOrPlus = minus |> orElse plus
-
-terms = combine minusOrPlus factor \a, b ->
-    when a is
-        Minus -> Minus2 b
-        Plus  -> Plus2 b
-        # TODO: Why is this necessary???
-        _    -> crash "WHAT"
-
-term = factor |> prepend (many terms) |> map Term
-
-mult = const Mult
-div  = const Div
-
-multOrDiv = mult |> orElse div
-
-factors = combine multOrDiv primary \a, b ->
-    when a is
-        Mult -> Multiply b
-        Div  -> Divide b
-        # TODO: Why is this necessary???
-        _    -> crash "WHAT"
-
-factor = primary |> prepend (many factors) |> map Factor
-
-# TODO: Recursion
-# unary = 
-
-# TODO: Recursion
-primary = number |> orElse string |> orElse true |> orElse false |> orElse nil
-
 ################
 ### Builders ###
 ################
 
-makeParser : ParseFunc in out -> Parser in out
 makeParser = \f ->
-    \{ items, index } ->
-        when List.get items index is
-            Ok item ->
-                when f item is
-                    ParseOk a -> ParsedIndex a (index + 1)
-                    ParseErr  -> ParseErr
-            Err OutOfBounds ->
-               ParseErr
+    \item ->
+        when f item is
+            ParseOk a -> Ok a
+            ParseErr  -> Err "uh oh"
 
 const = \a ->
     item <- makeParser
@@ -130,14 +71,12 @@ const = \a ->
 ### Combinators ###
 ###################
 
-map : Parser in out1, (out1 -> out2) -> Parser in out2
 map = \parser, f ->
     \input ->
         when parser input is
             ParsedIndex a i -> ParsedIndex (f a) i
             ParseErr        -> ParseErr
 
-many : Parser in out -> Parser in (List out)
 many = \parser ->
     \{ items, index } -> manyHelp parser items index []
 
@@ -146,14 +85,6 @@ manyHelp = \parser, items, index, soFar ->
         ParsedIndex a i -> manyHelp parser items i (List.append soFar a)
         ParseErr        -> ParsedIndex soFar index
 
-orElse : Parser in out, Parser in out -> Parser in out
-orElse = \parser1, parser2 ->
-    \input ->
-        when parser1 input is
-            ParsedIndex a i -> ParsedIndex a i
-            ParseErr        -> parser2 input
-
-combine : Parser in out1, Parser in out2, (out1, out2 -> out3) -> Parser in out3
 combine = \parser1, parser2, f ->
     \input ->
         when parser1 input is
@@ -163,22 +94,16 @@ combine = \parser1, parser2, f ->
                     ParseErr         -> ParseErr
             ParseErr -> ParseErr
 
-andThen : Parser in out, Parser in out -> Parser in (List out)
 andThen = \parser1, parser2 -> combine parser1 parser2 \a, b -> [a, b]
 
-append : Parser in (List out), Parser in out -> Parser in (List out)
 append = \parser1, parser2 -> combine parser1 parser2 \a, b -> a |> List.append b
 
-prepend : Parser in out, Parser in (List out) -> Parser in (List out)
 prepend = \parser1, parser2 -> combine parser1 parser2 \a, b -> b |> List.prepend a
 
-andThenL : Parser in out, Parser in * -> Parser in out
 andThenL = \parser1, parser2 -> combine parser1 parser2 \a, _b -> a
 
-andThenR : Parser in *, Parser in out -> Parser in out
 andThenR = \parser1, parser2 -> combine parser1 parser2 \_a, b -> b
 
-surroundedBy : Parser in out, Parser in *, Parser in * -> Parser in out
 surroundedBy = \parser, left, right -> left |> andThenR parser |> andThenL right
 
 ###############
