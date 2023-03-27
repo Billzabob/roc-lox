@@ -47,8 +47,8 @@ orElse = \parser1, parser2 ->
             Err _ -> parser2 input
 
 
-mOrP : Input [Plus, Minus]* -> Result [ParseOut [Plus, Minus] Nat] Str
-mOrP = plus |> orElse minus
+mOrP : Input [Plus, Minus]* -> Result [ParseOut (List [Plus, Minus]) Nat] Str
+mOrP = plus |> orElse minus |> many
 
 ################
 ### Builders ###
@@ -58,7 +58,7 @@ makeParser = \{items, index}, f ->
     when List.get items index is
         Ok a ->
             when f a is
-                Ok out -> Ok (ParseOut out (index + 1))
+                Ok out -> ParseOut out (index + 1) |> Ok
                 Err _  -> Err "uh oh"
         Err OutOfBounds ->
             Err "uh oh"
@@ -70,25 +70,25 @@ makeParser = \{items, index}, f ->
 map = \parser, f ->
     \input ->
         when parser input is
-            ParsedIndex a i -> ParsedIndex (f a) i
-            ParseErr        -> ParseErr
+            Ok (ParseOut a i) -> ParseOut a i |> Ok
+            Err _             -> ParseErr
 
 many = \parser ->
     \{ items, index } -> manyHelp parser items index []
 
 manyHelp = \parser, items, index, soFar ->
     when parser { items, index } is
-        ParsedIndex a i -> manyHelp parser items i (List.append soFar a)
-        ParseErr        -> ParsedIndex soFar index
+        Ok (ParseOut a i) -> manyHelp parser items i (List.append soFar a)
+        Err _             -> ParseOut soFar index |> Ok
 
 combine = \parser1, parser2, f ->
     \input ->
         when parser1 input is
-            ParsedIndex a index ->
+            Ok (ParseOut a index) ->
                 when parser2 { items: input.items, index } is
-                    ParsedIndex b i -> ParsedIndex (f a b) i
-                    ParseErr         -> ParseErr
-            ParseErr -> ParseErr
+                    Ok (ParseOut b i) -> ParseOut (f a b) i |> Ok
+                    Err err           -> Err err
+            Err err -> Err err
 
 andThen = \parser1, parser2 -> combine parser1 parser2 \a, b -> [a, b]
 
