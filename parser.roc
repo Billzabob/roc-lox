@@ -17,7 +17,12 @@ Input a : { items: List a, index: Nat }
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = primary
+expression = factor |> orElse unary
+
+factor = unary |> andThenL div |> combine unary \a, b -> Factor a b
+
+# TODO implement when recursive closures work
+unary = primary
 
 primary =
     true
@@ -45,14 +50,14 @@ nil   = const (Keyword Nil)
 string = \input ->
     item <- makeParser input
     when item is
-        String s -> Ok (String s)
+        String s -> Ok (Foo s)
         _        -> Err "uh oh"
 
 number = \input ->
     item <- makeParser input
     when item is
-        Integer n -> Ok (Integer n)
-        Float n   -> Ok (Float n)
+        Integer n -> Ok (Bar n)
+        Float n   -> Ok (Baz n)
         _         -> Err "uh oh"
 
 ################
