@@ -3,52 +3,57 @@ interface Parser
     imports []
 
 parse = \tokens ->
-    parseAll mOrP tokens
+    parseAll expression tokens
 
 Input a : { items: List a, index: Nat }
 
-# test1 : [Foo]* -> [Bar, Baz]
-# test1 = \a ->
-#     when a is
-#         Foo -> Bar
-#         _   -> Baz
+# expression     → equality ;
+# equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+# comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+# term           → factor ( ( "-" | "+" ) factor )* ;
+# factor         → unary ( ( "/" | "*" ) unary )* ;
+# unary          → ( "!" | "-" ) unary
+#                | primary ;
+# primary        → NUMBER | STRING | "true" | "false" | "nil"
+#                | "(" expression ")" ;
 
-# test2 : [Goo]* -> [Car, Caz]
-# test2 = \a ->
-#     when a is
-#         Goo -> Car
-#         _   -> Caz
+expression = primary
 
-# test3 : [Boo, Foo, Goo]* -> [Bar, Baz, Car, Caz]
-# test3 = \a ->
-#     when a is
-#         Boo -> test1 a
-#         _   -> test2 a
+primary =
+    true
+    |> orElse false
+    |> orElse nil
+    |> map Primary
 
-plus : Input [Plus]* -> Result [ParseOut [Plus] Nat] Str
-plus = \input ->
+##################
+### Constants ###
+##################
+
+plus  = const Plus
+minus = const Minus
+mult  = const Mult
+div   = const Div
+not   = const Not
+gt    = const Gt
+gte   = const GtEq
+lt    = const Lt
+lte   = const LtEq
+true  = const (Keyword True)
+false = const (Keyword False)
+nil   = const (Keyword Nil)
+
+string = \input ->
     item <- makeParser input
     when item is
-        Plus -> Ok Plus
-        _    -> Err "uh oh"
+        String s -> Ok (String s)
+        _        -> Err "uh oh"
 
-minus : Input [Minus]* -> Result [ParseOut [Minus] Nat] Str
-minus = \input ->
+number = \input ->
     item <- makeParser input
-        when item is
-            Minus -> Ok Minus
-            _     -> Err "uh oh"
-
-orElse: (Input a -> Result [ParseOut c Nat] Str), (Input a -> Result [ParseOut c Nat] Str) -> (Input a -> Result [ParseOut c Nat] Str)
-orElse = \parser1, parser2 ->
-    \input ->
-        when parser1 input is
-            Ok  a -> Ok a
-            Err _ -> parser2 input
-
-
-mOrP : Input [Plus, Minus]* -> Result [ParseOut (List [Plus, Minus]) Nat] Str
-mOrP = plus |> orElse minus |> many
+    when item is
+        Integer n -> Ok (Integer n)
+        Float n   -> Ok (Float n)
+        _         -> Err "uh oh"
 
 ################
 ### Builders ###
@@ -63,6 +68,12 @@ makeParser = \{items, index}, f ->
         Err OutOfBounds ->
             Err "uh oh"
 
+const = \a ->
+    \input ->
+        item <- makeParser input
+        if item == a then Ok a else Err "uh oh"
+
+
 ###################
 ### Combinators ###
 ###################
@@ -70,16 +81,23 @@ makeParser = \{items, index}, f ->
 map = \parser, f ->
     \input ->
         when parser input is
-            Ok (ParseOut a i) -> ParseOut a i |> Ok
-            Err _             -> ParseErr
+            Ok (ParseOut a i) -> ParseOut (f a) i |> Ok
+            Err err           -> Err err
 
+# TODO: Use slices instead of indexing
 many = \parser ->
-    \{ items, index } -> manyHelp parser items index []
+    manyHelp = \items, index, soFar ->
+        when parser { items, index } is
+            Ok (ParseOut a i) -> manyHelp items i (List.append soFar a)
+            Err _             -> ParseOut soFar index |> Ok
+    \{ items, index } -> manyHelp items index []
 
-manyHelp = \parser, items, index, soFar ->
-    when parser { items, index } is
-        Ok (ParseOut a i) -> manyHelp parser items i (List.append soFar a)
-        Err _             -> ParseOut soFar index |> Ok
+orElse: (Input a -> Result [ParseOut c Nat] Str), (Input a -> Result [ParseOut c Nat] Str) -> (Input a -> Result [ParseOut c Nat] Str)
+orElse = \parser1, parser2 ->
+    \input ->
+        when parser1 input is
+            Ok  a -> Ok a
+            Err _ -> parser2 input
 
 combine = \parser1, parser2, f ->
     \input ->
@@ -106,16 +124,15 @@ surroundedBy = \parser, left, right -> left |> andThenR parser |> andThenL right
 ### Runners ###
 ###############
 
-parseAll = \parser, items ->
-    parseAllHelp parser items [] 0 (List.len items)
-    
 # TODO: Use slices instead of indexing
-parseAllHelp = \parser, items, parsedItems, index, length ->
-    if index < length then
-        when parser { items, index } is
-            Ok (ParseOut a newIndex) ->
-                parseAllHelp parser items (List.append parsedItems a) newIndex length
-            Err _ ->
-                Err "Failed to parse"
-    else
-        Ok parsedItems
+parseAll = \parser, items ->
+    parseAllHelp = \parsedItems, index, length ->
+        if index < length then
+            when parser { items, index } is
+                Ok (ParseOut a newIndex) ->
+                    parseAllHelp (List.append parsedItems a) newIndex length
+                Err _ ->
+                    Err "Failed to parse"
+        else
+            Ok parsedItems
+    parseAllHelp [] 0 (List.len items)

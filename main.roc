@@ -26,7 +26,7 @@ run =
 runRepl = Stdout.line "Running REPL"
 
 expectedResult = [
-    [Plus]
+    Primary (Keyword True)
 ]
 
 runCompiler = \file ->
