@@ -17,9 +17,7 @@ Input a : { items: List a, index: Nat }
 # primary        → NUMBER | STRING | "true" | "false" | "nil"
 #                | "(" expression ")" ;
 
-expression = factor |> orElse unary
-
-factor = unary |> andThenL div |> combine unary \a, b -> Factor a b
+expression = unary
 
 # TODO implement when recursive closures work
 unary = primary
@@ -28,6 +26,7 @@ primary =
     true
     |> orElse false
     |> orElse nil
+    |> orElse string
     |> map Primary
 
 ##################
