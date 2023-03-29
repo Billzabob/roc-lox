@@ -27,6 +27,7 @@ primary =
     |> orElse false
     |> orElse nil
     |> orElse string
+    |> orElse number
     |> map Primary
 
 ##################
@@ -49,14 +50,14 @@ nil   = const (Keyword Nil)
 string = \input ->
     item <- makeParser input
     when item is
-        String s -> Ok (Foo s)
+        String s -> Ok (String s)
         _        -> Err "uh oh"
 
 number = \input ->
     item <- makeParser input
     when item is
-        Integer n -> Ok (Bar n)
-        Float n   -> Ok (Baz n)
+        Integer n -> Ok (Integer n)
+        Float n   -> Ok (Float n)
         _         -> Err "uh oh"
 
 ################
